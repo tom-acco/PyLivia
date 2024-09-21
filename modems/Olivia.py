@@ -102,10 +102,14 @@ class OliviaModem(object):
         if piece == None:
             if not self.preamble:
                 return wf[0 : 64 * self.wlen]
+            
             self.trail = numpy.zeros(self.wlen)
+
             tail = self.generateTail()
+
             if len(tail) < 64 * self.wlen:
                 wf[self.wlen:self.wlen + len(tail)] = tail
+
             return wf[0 : 64 * self.wlen]
         
         syms = self.prepareSymbols(piece)
@@ -266,3 +270,6 @@ class OliviaModem(object):
                 piece = piece + "\0"
 
             self.queue.put(self.generateBlock(piece) / self.attenuation)
+        
+        ## Trailing tail
+        self.queue.put(self.generateBlock(None) / self.attenuation)
