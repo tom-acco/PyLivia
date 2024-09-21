@@ -1,0 +1,44 @@
+Grid {
+    grid-size: 3 2;
+    grid-rows: 1fr 3;
+}
+
+Header {
+    dock: top;
+    width: 100%;
+    height: 3;
+    border: round white;
+    content-align: center middle;
+    background: black;
+}
+
+Log, VerticalScroll, OptionList {
+    column-span: 3;
+    width: 100%;
+    height: 100%;
+    border: round white;
+    background: black;
+}
+
+#to {
+    column-span: 1;
+    width: 100%;
+    border: round white;
+    background: black;
+}
+
+#message {
+    column-span: 2;
+    width: 100%;
+    border: round white;
+    background: black;
+}
+
+ModemStatus {
+    dock: bottom;
+    width: 100%;
+    height: 3;
+    border: round white;
+    content-align: center middle;
+    background: black;
+}
