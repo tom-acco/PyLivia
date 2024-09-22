@@ -26,8 +26,15 @@ class OliviaModem(object):
         ## Buffer containing trail of last symbol, for overlapping
         self.trail = numpy.zeros(self.wlen)
 
+        ## sounddevice InputStream for sample acquisition
+        self.inputStream = sounddevice.InputStream(
+            samplerate = self.sample_rate,
+            blocksize = self.wlen,
+            dtype = numpy.float32,
+        )
+
         ## sounddevice OutputStream for sample playback
-        self.sout = sounddevice.OutputStream(
+        self.outputStream = sounddevice.OutputStream(
             samplerate = self.sample_rate,
             blocksize = 64 * self.wlen,
             channels = 1,
@@ -35,7 +42,8 @@ class OliviaModem(object):
             callback = self.transmit
         )
         
-        self.sout.start()
+        self.inputStream.start()
+        self.outputStream.start()
 
         self.queue = Queue()
 
