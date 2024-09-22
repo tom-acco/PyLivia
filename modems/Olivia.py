@@ -1,7 +1,6 @@
 import sounddevice
 import numpy
 import threading
-import socket
 
 from queue import Queue
 
