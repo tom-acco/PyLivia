@@ -6,6 +6,7 @@ def callback(state):
 
 if __name__ == "__main__":
     ol = OliviaModem(callback=callback)
+    ol.getConfig()
     ol.send("test")
 
     sleep(10)

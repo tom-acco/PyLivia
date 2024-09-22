@@ -41,6 +41,16 @@ class OliviaModem(object):
 
         print(f"Initialised Olivia modulator at {str(self.centre_freq)}Hz, using {str(self.symbols)} tones over {str(self.bandwidth)}Hz")
 
+    def getConfig(self):
+        print("----- CONFIG -----")
+        print(f"Sample Rate: {self.sample_rate}")
+        print(f"Attenuation: {self.attenuation}")
+        print(f"Preamble: {self.preamble}")
+        print(f"Centre Freq: {self.centre_freq}Hz")
+        print(f"Tones: {self.symbols}")
+        print(f"Bandwidth: {self.bandwidth}Hz")
+        print("------------------")
+
     def transmit(self, outdata, frames, time, status):
         try:
             data = self.queue.get_nowait()
