@@ -78,13 +78,15 @@ class OliviaModem(object):
 
         ## sounddevice InputStream for sample acquisition
         self.inputStream = sounddevice.InputStream(
+            device = self.input_device,
             samplerate = self.sample_rate,
             blocksize = self.wlen,
-            dtype = numpy.float32,
+            dtype = numpy.float32
         )
 
         ## sounddevice OutputStream for sample playback
         self.outputStream = sounddevice.OutputStream(
+            device = self.output_device,
             samplerate = self.sample_rate,
             blocksize = 64 * self.wlen,
             channels = 1,
