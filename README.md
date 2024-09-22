@@ -14,10 +14,30 @@ pip install -r requirements.txt
 python -m sounddevice
 ```
 
-## Configure
-Update variables in main.py
+## Environment File
+.env
+```bash
+## AUDIO DEVICES
+## Id (Int) of device from `python -m sounddevice`
+## Comment out to use default
+#INPUT_DEVICE = 0
+#OUTPUT_DEVICE = 0
 
-// TODO: Environment file
+## SAMPLE RATE
+SAMPLE_RATE = 8000
+
+## ATTENUATION
+ATTENUATION = 30
+
+## CENTRE FREQ
+CENTRE_FREQ = 1500
+
+## SYMBOLS
+SYMBOLS = 32
+
+## BANDWIDTH
+BANDWIDTH = 1000
+```
 
 # Credits
 [sntfrc/olivia-python](https://github.com/sntfrc/olivia-python)

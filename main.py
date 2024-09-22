@@ -1,3 +1,6 @@
+import os
+from dotenv import load_dotenv
+
 from textual.app import App
 from textual.containers import Grid
 from textual.reactive import reactive
@@ -5,26 +8,8 @@ from textual.widgets import Input, Label, OptionList
 
 from modems.Olivia import OliviaModem
 
-## AUDIO DEVICES
-## None for default
-## Id (Int) of device from `python -m sounddevice`
-INPUT_DEVICE = None
-OUTPUT_DEVICE = None
-
-## SAMPLE RATE
-SAMPLE_RATE = 8000
-
-## ATTENUATION
-ATTENUATION = 30
-
-## CENTRE FREQ
-CENTRE_FREQ = 1500
-
-## SYMBOLS
-SYMBOLS = 32
-
-## BANDWIDTH
-BANDWIDTH = 1000
+## Load environment file
+load_dotenv()
 
 class ModemStatus(Label):
     state = reactive("")
@@ -43,13 +28,13 @@ class AppDisplay(App):
 
     def on_mount(self):
         self.olivia = OliviaModem(
-            input_device = INPUT_DEVICE,
-            output_device = OUTPUT_DEVICE,
-            sample_rate = SAMPLE_RATE,
-            attenuation = ATTENUATION,
-            centre_freq = CENTRE_FREQ,
-            symbols = SYMBOLS,
-            bandwidth = BANDWIDTH,
+            input_device = os.getenv("INPUT_DEVICE", None),
+            output_device = os.getenv("INPUT_DEVICE", None),
+            sample_rate = os.getenv("SAMPLE_RATE", 8000),
+            attenuation = os.getenv("ATTENUATION", 30),
+            centre_freq = os.getenv("CENTRE_FREQ", 1500),
+            symbols = os.getenv("SYMBOLS", 32),
+            bandwidth = os.getenv("BANDWIDTH", 1000),
             callback = self.oliviaCallback
         )
         self.olivia.start()

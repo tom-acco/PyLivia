@@ -10,25 +10,25 @@ class OliviaModem(object):
         if input_device == None:
             self.input_device = sounddevice.default.device[0]
         else:
-            self.input_device = input_device
+            self.input_device = int(input_device)
 
         if output_device == None:
             self.output_device = sounddevice.default.device[1]
         else:
-            self.output_device = output_device
+            self.output_device = int(output_device)
 
         # Set params
-        self.sample_rate = sample_rate
-        self.attenuation = attenuation
-        self.block_threshold = block_threshold
-        self.preamble = preamble
-        self.centre_freq = centre_freq
-        self.symbols = symbols
-        self.bandwidth = bandwidth
+        self.sample_rate = int(sample_rate)
+        self.attenuation = int(attenuation)
+        self.block_threshold = int(block_threshold)
+        self.preamble = bool(preamble)
+        self.centre_freq = int(centre_freq)
+        self.symbols = int(symbols)
+        self.bandwidth = int(bandwidth)
         self.callback = callback
 
         ## Constrain attenuation to >1
-        if attenuation < 1:
+        if self.attenuation < 1:
             self.attenuation = 1
 
         # Key is a 64-bit fixed value and can be found in specification.
@@ -102,13 +102,10 @@ class OliviaModem(object):
 
         print(f"Started Olivia modulator at {str(self.centre_freq)}Hz, using {str(self.symbols)} tones over {str(self.bandwidth)}Hz")
 
-    def listDevices(self):
-        print(sounddevice.query_devices())
-
     def getConfig(self):
         print("----- CONFIG -----")
-        print(f"Input Device: {sounddevice.query_devices(device = self.input_device).get("name")}")
-        print(f"Output Device: {sounddevice.query_devices(device = self.output_device).get("name")}")
+        print(f"Input Device: {sounddevice.query_devices(device = self.input_device).get('name')}")
+        print(f"Output Device: {sounddevice.query_devices(device = self.output_device).get('name')}")
         print(f"Sample Rate: {self.sample_rate}")
         print(f"Attenuation: {self.attenuation}")
         print(f"Block Threshold: {self.block_threshold}")
