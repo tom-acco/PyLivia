@@ -29,7 +29,7 @@ class AppDisplay(App):
     def on_mount(self):
         self.olivia = OliviaModem(
             input_device = os.getenv("INPUT_DEVICE", None),
-            output_device = os.getenv("INPUT_DEVICE", None),
+            output_device = os.getenv("OUTPUT_DEVICE", None),
             sample_rate = os.getenv("SAMPLE_RATE", 8000),
             attenuation = os.getenv("ATTENUATION", 30),
             centre_freq = os.getenv("CENTRE_FREQ", 1500),

@@ -69,13 +69,6 @@ class OliviaModem(object):
         self.queue = Queue()
 
     def start(self):
-        ## Update the state
-        self.state = "Idle"
-
-        ## Send callback with updated state
-        if self.callback:
-            self.callback(state = self.state)
-
         ## sounddevice InputStream for sample acquisition
         self.inputStream = sounddevice.InputStream(
             device = self.input_device,
@@ -103,6 +96,13 @@ class OliviaModem(object):
         receiveThread.start()
 
         print(f"Started Olivia modulator at {str(self.centre_freq)}Hz, using {str(self.symbols)} tones over {str(self.bandwidth)}Hz")
+
+        ## Update the state
+        self.state = "Idle"
+
+        ## Send callback with updated state
+        if self.callback:
+            self.callback(state = self.state)
 
     def getConfig(self):
         print("----- CONFIG -----")
