@@ -7,7 +7,7 @@ from modems.Olivia import OliviaModem
 
 ## AUDIO DEVICES
 ## None for default
-## Id (Int) of device from Olivia.listDevices()
+## Id (Int) of device from `python -m sounddevice`
 INPUT_DEVICE = None
 OUTPUT_DEVICE = None
 
