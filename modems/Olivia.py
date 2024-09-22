@@ -442,7 +442,9 @@ class OliviaModem(object):
     def send(self, message):
         # Splits message in pieces, padding last one.
         # Then puts the pieces in transmission queue.
-        self.queue.put(self.generatePreamble() / self.attenuation)
+
+        if self.preamble:
+            self.queue.put(self.generatePreamble() / self.attenuation)
 
         for i in range(0, len(message), self.spb):
             piece = message[i : i + self.spb]
