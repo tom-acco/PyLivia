@@ -20,15 +20,8 @@ Log, VerticalScroll, OptionList {
     background: black;
 }
 
-#to {
-    column-span: 1;
-    width: 100%;
-    border: round white;
-    background: black;
-}
-
 #message {
-    column-span: 2;
+    column-span: 3;
     width: 100%;
     border: round white;
     background: black;

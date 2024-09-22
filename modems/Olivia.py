@@ -5,7 +5,18 @@ import threading
 from queue import Queue
 
 class OliviaModem(object):
-    def __init__(self, sample_rate = 8000, attenuation = 30, block_threshold = 24, preamble = True, centre_freq = 1500, symbols = 32, bandwidth = 1000, callback = None):
+    def __init__(self, input_device = None, output_device = None, sample_rate = 8000, attenuation = 30, block_threshold = 24, preamble = True, centre_freq = 1500, symbols = 32, bandwidth = 1000, callback = None):
+        # Setup audio devices
+        if input_device == None:
+            self.input_device = sounddevice.default.device[0]
+        else:
+            self.input_device = input_device
+
+        if output_device == None:
+            self.output_device = sounddevice.default.device[1]
+        else:
+            self.output_device = output_device
+
         # Set params
         self.sample_rate = sample_rate
         self.attenuation = attenuation
@@ -15,6 +26,10 @@ class OliviaModem(object):
         self.symbols = symbols
         self.bandwidth = bandwidth
         self.callback = callback
+
+        ## Constrain attenuation to >1
+        if attenuation < 1:
+            self.attenuation = 1
 
         # Key is a 64-bit fixed value and can be found in specification.
         # key = 0xE257E6D0291574EC
@@ -47,6 +62,20 @@ class OliviaModem(object):
         ## Buffer containing input stream data
         self.inputBuffer = numpy.zeros(self.wlen)
 
+        ## State sent with callback
+        self.state = "Inactive"
+
+        ## Queue for queueing output things
+        self.queue = Queue()
+
+    def start(self):
+        ## Update the state
+        self.state = "Idle"
+
+        ## Send callback with updated state
+        if self.callback:
+            self.callback(state = self.state)
+
         ## sounddevice InputStream for sample acquisition
         self.inputStream = sounddevice.InputStream(
             samplerate = self.sample_rate,
@@ -62,24 +91,24 @@ class OliviaModem(object):
             dtype = numpy.float32,
             callback = self.transmit
         )
-        
+
+        ## Open the audio streams
         self.inputStream.start()
         self.outputStream.start()
-
-        self.queue = Queue()
-
-        ## State sent with callback
-        self.state = "Idle"
 
         ## Spawn thread for receiving
         receiveThread = threading.Thread(target = self.receive, daemon = True)
         receiveThread.start()
 
-        print(f"Initialised Olivia modulator at {str(self.centre_freq)}Hz, using {str(self.symbols)} tones over {str(self.bandwidth)}Hz")
-        self.getConfig()
+        print(f"Started Olivia modulator at {str(self.centre_freq)}Hz, using {str(self.symbols)} tones over {str(self.bandwidth)}Hz")
+
+    def listDevices(self):
+        print(sounddevice.query_devices())
 
     def getConfig(self):
         print("----- CONFIG -----")
+        print(f"Input Device: {sounddevice.query_devices(device = self.input_device).get("name")}")
+        print(f"Output Device: {sounddevice.query_devices(device = self.output_device).get("name")}")
         print(f"Sample Rate: {self.sample_rate}")
         print(f"Attenuation: {self.attenuation}")
         print(f"Block Threshold: {self.block_threshold}")
@@ -172,7 +201,7 @@ class OliviaModem(object):
         else:
             return False
 
-    def transmit(self, outdata, frames, time, status):
+    def transmit(self, outdata, frames, time, status):        
         try:
             data = self.queue.get_nowait()
         except:

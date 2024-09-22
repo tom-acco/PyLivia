@@ -9,8 +9,19 @@ def callback(state = None, message = None):
         print(f"Received Message: {message}")
 
 if __name__ == "__main__":
+    ## Init the modem
     ol = OliviaModem(callback = callback)
 
+    ## List the possible devices
+    ol.listDevices()
+
+    ## Print the config
+    ol.getConfig()
+
+    ## Start the modem
+    ol.start()
+
+    ## Send a test message
     ol.send("test")
 
-    sleep(20)
+    sleep(30)
