@@ -1,18 +1,36 @@
 import sounddevice
 import numpy
+import threading
 
 from queue import Queue
 
 class OliviaModem(object):
-    def __init__(self, sample_rate = 8000, attenuation = 30, preamble = True, centre_freq = 1500, symbols = 32, bandwidth = 1000, callback = None):
+    def __init__(self, sample_rate = 8000, attenuation = 30, block_threshold = 24, preamble = True, centre_freq = 1500, symbols = 32, bandwidth = 1000, callback = None):
         # Set params
         self.sample_rate = sample_rate
         self.attenuation = attenuation
+        self.block_threshold = block_threshold
         self.preamble = preamble
         self.centre_freq = centre_freq
         self.symbols = symbols
         self.bandwidth = bandwidth
         self.callback = callback
+
+        # Key is a 64-bit fixed value and can be found in specification.
+        # key = 0xE257E6D0291574EC
+        # It is a pseudorandom value and its role is to make the
+        # output stream appear random.
+        # Here it is decomposed in a bit array for easier use.
+        self.key = numpy.flip(numpy.array([
+            1, 1, 1, 0, 0, 0, 1, 0,
+            0, 1, 0, 1, 0, 1, 1, 1,
+            1, 1, 1, 0, 0, 1, 1, 0,
+            1, 1, 0, 1, 0, 0, 0, 0,
+            0, 0, 1, 0, 1, 0, 0, 1,
+            0, 0, 0, 1, 0, 1, 0, 1,
+            0, 1, 1, 1, 0, 1, 0, 0,
+            1, 1, 1, 0, 1, 1, 0, 0
+        ]))
 
         ## Number of bits for symbol
         self.spb = int(numpy.log2(self.symbols))
@@ -25,6 +43,9 @@ class OliviaModem(object):
 
         ## Buffer containing trail of last symbol, for overlapping
         self.trail = numpy.zeros(self.wlen)
+
+        ## Buffer containing input stream data
+        self.inputBuffer = numpy.zeros(self.wlen)
 
         ## sounddevice InputStream for sample acquisition
         self.inputStream = sounddevice.InputStream(
@@ -47,17 +68,109 @@ class OliviaModem(object):
 
         self.queue = Queue()
 
+        ## State sent with callback
+        self.state = "Idle"
+
+        ## Spawn thread for receiving
+        receiveThread = threading.Thread(target = self.receive, daemon = True)
+        receiveThread.start()
+
         print(f"Initialised Olivia modulator at {str(self.centre_freq)}Hz, using {str(self.symbols)} tones over {str(self.bandwidth)}Hz")
+        self.getConfig()
 
     def getConfig(self):
         print("----- CONFIG -----")
         print(f"Sample Rate: {self.sample_rate}")
         print(f"Attenuation: {self.attenuation}")
+        print(f"Block Threshold: {self.block_threshold}")
+        print("----- PARAMS -----")
         print(f"Preamble: {self.preamble}")
         print(f"Centre Freq: {self.centre_freq}Hz")
         print(f"Tones: {self.symbols}")
         print(f"Bandwidth: {self.bandwidth}Hz")
         print("------------------")
+
+    def receive(self):
+        syms = []
+
+        while True:
+            self.updateBuffer()
+
+            sym = self.detectSymbol()
+            syms.append(sym)
+
+            if len(syms) == 64:
+                # Enough symbols to decode a block
+                if self.decodeBlock(syms):
+                    # Block decoded successfully, waiting for a new one
+                    syms = [] 
+                else:
+                    # Probably not a complete block, try rolling
+                    syms = syms[1:]
+
+    def updateBuffer(self):
+        (samples, of) = self.inputStream.read(self.wlen)
+        self.inputBuffer = samples[:,0]
+
+    def detectSymbol(self):
+        '''
+        Applies Fourier transform to audio buffer to detect
+        symbol corresponding to sampled tone.
+
+        Returns
+        -------
+        int
+            Most likely symbol number.
+        '''
+
+        spectrum = numpy.abs(numpy.fft.fft(self.inputBuffer))
+        ix = self.centre_freq - self.bandwidth / 2 + self.fsep / 2
+        measures = numpy.zeros(self.symbols)
+
+        for i in range(0, self.symbols):
+            ix += self.fsep
+            measures[i] = spectrum[int(ix * self.wlen / self.sample_rate)]
+
+        mix = numpy.argmax(measures)
+        
+        return self.degray(mix)
+
+    def decodeBlock(self, syms):
+        '''
+        Decodes a full block of 64 symbols, then prints it
+        to standard output.
+        '''
+        w = numpy.zeros((self.spb, 64))
+        
+        output = ""
+        doubt = 0
+        for i in range(0, self.spb):
+            for j in range(0, 64):
+                bit = (syms[j] >> ((i+j) % self.spb)) & 1
+                if bit == 1:
+                    w[i,j] = -1
+                else:
+                    w[i,j] = 1
+                    
+            w[i,:] = w[i,:] * (-2 * numpy.roll(self.key, -13 * i) + 1)
+            w[i,:] = self.fwht(w[i,:])
+            
+            c = numpy.argmax(numpy.abs(w[i,:]))
+            
+            if abs(w[i,c]) < self.block_threshold:
+                doubt += 1
+                
+            if w[i,c] < 0:
+                c = c + 64    
+            if c != 0:
+                output += chr(c)
+        
+        if doubt == 0:
+            if self.callback:
+                self.callback(message = output)
+            return True
+        else:
+            return False
 
     def transmit(self, outdata, frames, time, status):
         try:
@@ -68,11 +181,17 @@ class OliviaModem(object):
         outdata[:,0] = data
 
         if data is not None:
+            self.state = "Transmitting"
+
             if self.callback:
-                self.callback(state = "Transmitting")
+                self.callback(state = self.state)
         else:
-            if self.callback:
-                self.callback(state = "Idle")
+            ## If finished transmitting, go back to idle
+            if self.state == "Transmitting":
+                self.state = "Idle"
+
+                if self.callback:
+                    self.callback(state = self.state)
 
     def generatePreamble(self):
         '''
@@ -178,21 +297,6 @@ class OliviaModem(object):
 
         w = numpy.zeros((self.spb, 64))
         
-        # Key is a 64-bit fixed value and can be found in specification.
-        #   key = 0xE257E6D0291574EC
-        # It is a pseudorandom value and its role is to make the
-        # output stream appear random.
-        # Here it is decomposed in a bit array for easier use.
-        key = numpy.flip(numpy.array(
-            [1, 1, 1, 0, 0, 0, 1, 0,
-            0, 1, 0, 1, 0, 1, 1, 1,
-            1, 1, 1, 0, 0, 1, 1, 0,
-            1, 1, 0, 1, 0, 0, 0, 0,
-            0, 0, 1, 0, 1, 0, 0, 1,
-            0, 0, 0, 1, 0, 1, 0, 1,
-            0, 1, 1, 1, 0, 1, 0, 0,
-            1, 1, 1, 0, 1, 1, 0, 0]))
-        
         # Character to 64-value vector mapping to provide redundancy.
         # Characters are 7-bit (value from 0 to 127)
         # Values from 0 to 63 are mapped by setting nth value to 1
@@ -213,7 +317,7 @@ class OliviaModem(object):
             
             # XOR with key to ensure randomness
             # (XOR is made by multiplying with -1 or 1)
-            w[i,:] = w[i,:] * (-2 * numpy.roll(key, -13*i)+1)
+            w[i,:] = w[i,:] * (-2 * numpy.roll(self.key, -13*i)+1)
         
         syms = numpy.zeros((64, self.spb))
         
@@ -230,7 +334,30 @@ class OliviaModem(object):
             symn[i] = self.bits2int(numpy.flip(syms[i]))
 
         return symn
-    
+
+    def fwht(self, data):
+        '''
+        Fast Walsh-Hadamard transform.
+        '''
+        step = 1
+        while step < len(data):
+            for ptr in range(0, len(data), 2*step):
+                for ptr2 in range(ptr, step+ptr):
+                    bit1 = data[ptr2]
+                    bit2 = data[ptr2+step]
+                    
+                    newbit1 = bit2
+                    newbit1 = newbit1 + bit1
+                    
+                    newbit2 = bit2
+                    newbit2 = newbit2 - bit1
+                    
+                    data[ptr2] = newbit1
+                    data[ptr2+step] = newbit2
+                    
+            step *= 2
+        return data
+
     def ifwht(self, data):
         '''
         Inverse Fast Walsh-Hadamard transform.
@@ -275,6 +402,13 @@ class OliviaModem(object):
 
         n = int(n)
         return n ^ (n >> 1)
+
+    def degray(self, n):
+        mask = n
+        while mask != 0:
+            mask >>= 1
+            n ^= mask
+        return n
 
     def send(self, message):
         # Splits message in pieces, padding last one.

@@ -6,9 +6,12 @@ from textual.widgets import Input, Label, OptionList
 from modems.Olivia import OliviaModem
 
 class ModemStatus(Label):
-	state = reactive("Idle")
-	def render(self):
-		return self.state
+    def __init__(self):
+        super().__init__()
+        self.state = ""
+
+    def render(self):
+        return self.state
 
 class AppDisplay(App):
     line_count = 0
@@ -23,6 +26,7 @@ class AppDisplay(App):
 
     def on_mount(self):
         self.olivia = OliviaModem(callback = self.oliviaCallback)
+        self.query_one(ModemStatus).state = self.olivia.state
 
         def handle_submit():
             message = str(message_input.value)
@@ -42,8 +46,12 @@ class AppDisplay(App):
         self.query_one(OptionList).add_option(message)
         self.query_one(OptionList).scroll_to(y = self.line_count)
 
-    def oliviaCallback(self, state):
-        self.query_one(ModemStatus).state = state
+    def oliviaCallback(self, state = None, message = None):
+        if state:
+            self.query_one(ModemStatus).state = state
+
+        if message:
+            self.add_message(message)
 
 if __name__ == "__main__":
     app = AppDisplay(css_path="style.tcss")
