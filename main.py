@@ -6,6 +6,7 @@ from textual.containers import Grid
 from textual.reactive import reactive
 from textual.widgets import Input, Label, OptionList
 
+from hamlib.RigCTL import RigCTL
 from modems.Olivia import OliviaModem
 
 ## Load environment file
@@ -27,6 +28,17 @@ class AppDisplay(App):
         yield ModemStatus()
 
     def on_mount(self):
+        rig_file = os.getenv("RIG_FILE", None)
+        rig_model = os.getenv("RIG_MODEL", None)
+
+        if rig_file and rig_model:
+            rigctl = RigCTL(
+                rig_file = rig_file,
+                model = rig_model
+            )
+        else:
+            rigctl = None
+
         self.olivia = OliviaModem(
             input_device = os.getenv("INPUT_DEVICE", None),
             output_device = os.getenv("OUTPUT_DEVICE", None),
@@ -35,8 +47,10 @@ class AppDisplay(App):
             centre_freq = os.getenv("CENTRE_FREQ", 1500),
             symbols = os.getenv("SYMBOLS", 32),
             bandwidth = os.getenv("BANDWIDTH", 1000),
-            callback = self.oliviaCallback
+            callback = self.oliviaCallback,
+            rigctl = rigctl
         )
+        
         self.olivia.start()
 
         def handle_submit():

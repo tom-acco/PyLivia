@@ -2,6 +2,8 @@ import os
 from dotenv import load_dotenv
 
 from time import sleep
+
+from hamlib.RigCTL import RigCTL
 from modems.Olivia import OliviaModem
 
 ## Load environment file
@@ -15,6 +17,18 @@ def callback(state = None, message = None):
         print(f"Received Message: {message}")
 
 if __name__ == "__main__":
+    ## Setup RIGCTL
+    rig_file = os.getenv("RIG_FILE", None)
+    rig_model = os.getenv("RIG_MODEL", None)
+
+    if rig_file and rig_model:
+        rigctl = RigCTL(
+            rig_file = rig_file,
+            model = rig_model
+        )
+    else:
+        rigctl = None
+
     ## Init the modem
     ol = OliviaModem(
         input_device = os.getenv("INPUT_DEVICE", None),
@@ -24,7 +38,8 @@ if __name__ == "__main__":
         centre_freq = os.getenv("CENTRE_FREQ", 1500),
         symbols = os.getenv("SYMBOLS", 32),
         bandwidth = os.getenv("BANDWIDTH", 1000),
-        callback = callback
+        callback = callback,
+        rigctl = rigctl
     )
 
     ## Print the config

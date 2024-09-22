@@ -1,11 +1,25 @@
 import sounddevice
 import numpy
 import threading
+import socket
 
 from queue import Queue
 
 class OliviaModem(object):
-    def __init__(self, input_device = None, output_device = None, sample_rate = 8000, attenuation = 30, block_threshold = 24, preamble = True, centre_freq = 1500, symbols = 32, bandwidth = 1000, callback = None):
+    def __init__(
+            self,
+            input_device = None,
+            output_device = None,
+            sample_rate = 8000,
+            attenuation = 30,
+            block_threshold = 24,
+            preamble = True,
+            centre_freq = 1500,
+            symbols = 32,
+            bandwidth = 1000,
+            callback = None,
+            rigctl = None
+        ):
         # Setup audio devices
         if input_device == None:
             self.input_device = sounddevice.default.device[0]
@@ -26,6 +40,9 @@ class OliviaModem(object):
         self.symbols = int(symbols)
         self.bandwidth = int(bandwidth)
         self.callback = callback
+
+        # Rig CTL
+        self.rigctl = rigctl
 
         ## Constrain attenuation to >1
         if self.attenuation < 1:
@@ -200,7 +217,7 @@ class OliviaModem(object):
         else:
             return False
 
-    def transmit(self, outdata, frames, time, status):        
+    def transmit(self, outdata, frames, time, status):
         try:
             data = self.queue.get_nowait()
         except:
@@ -209,13 +226,20 @@ class OliviaModem(object):
         outdata[:,0] = data
 
         if data is not None:
-            self.state = "Transmitting"
+            if self.state == "Idle":
+                if self.rigctl:
+                    self.rigctl.set_ptt(True)
 
-            if self.callback:
-                self.callback(state = self.state)
+                self.state = "Transmitting"
+
+                if self.callback:
+                    self.callback(state = self.state)
         else:
             ## If finished transmitting, go back to idle
             if self.state == "Transmitting":
+                if self.rigctl:
+                    self.rigctl.set_ptt(False)
+
                 self.state = "Idle"
 
                 if self.callback:

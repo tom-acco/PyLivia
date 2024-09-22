@@ -17,6 +17,10 @@ python -m sounddevice
 ## Environment File
 .env
 ```bash
+## RIGCTL
+RIG_FILE = "/dev/tty.usbmodem58910155343"
+RIG_MODEL = 3087
+
 ## AUDIO DEVICES
 ## Id (Int) of device from `python -m sounddevice`
 ## Comment out to use default
